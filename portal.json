@@ -1,6 +1,7 @@
 {
   "title": "录歌与练唱分析",
   "summary": "导入人声或跟伴奏录唱，查看音准和入拍偏差。",
+  "category": "应用仓库",
   "visibility": "public",
   "site": "docs",
   "entry": "song-practice_index.html",
