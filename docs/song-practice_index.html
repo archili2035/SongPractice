@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>录歌与练唱分析</title>
+    <link rel="stylesheet" href="assets/theme/tokens.css">
+    <link rel="stylesheet" href="assets/theme/base.css">
+    <style>
+        .practice { display: grid; gap: var(--space-5); }
+        .practice h2 { margin-bottom: var(--space-3); }
+        .controls, .fields { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-4); align-items: center; }
+        .fields { align-items: start; margin-block: var(--space-4); }
+        .fields > * { flex: 1 1 12rem; min-width: 0; }
+        .fields input { display: block; max-width: 100%; margin-top: var(--space-1); font: inherit; }
+        .fields input[type=number] { width: 9rem; padding: var(--space-1) var(--space-2); border: 1px solid var(--hairline-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); }
+        .practice button { cursor: pointer; }
+        .practice button:disabled { opacity: .55; cursor: default; }
+        .practice .button { border: 1px solid transparent; }
+        .practice .button-quiet { border-color: var(--hairline-strong); }
+        .timeline-control { flex: 1 1 10rem; min-width: 0; accent-color: var(--accent); }
+        .chart { width: 100%; height: clamp(13rem, 34vw, 19rem); display: block; border: 1px solid var(--hairline); border-radius: var(--radius-md); background: var(--surface); }
+        .table-scroll { overflow: auto; max-height: 25rem; }
+        .table-scroll table { margin: 0; white-space: nowrap; }
+        .seek-note { background: transparent; border: 0; color: var(--accent); font: inherit; text-decoration: underline; text-underline-offset: .15em; padding: var(--space-1); }
+        .legend { display: flex; gap: var(--space-4); flex-wrap: wrap; }
+        .legend b { color: var(--accent); }
+        .legend span { color: var(--info); }
+        #status { min-height: 1.5em; }
+    </style>
+    <script src="assets/song-practice/singing-practice.js" defer></script>
+</head>
+<body>
+    <main>
+        <header class="band band-tight">
+            <div class="page">
+                <div class="hero">
+                    <h1>录歌与练唱分析</h1>
+                    <p class="lead">用自己的录音找出偏高、偏低和进拍不稳的地方。</p>
+                </div>
+            </div>
+        </header>
+        <section class="band band-alt" aria-label="练唱工作台">
+            <div class="page practice">
+                <section class="card" aria-labelledby="setup-title">
+                    <h2 id="setup-title">录音与伴奏</h2>
+                    <div class="fields">
+                        <div>
+                            <label>人声录音 <input id="vocal-file" type="file" accept="audio/*,.m4a,.wav,.mp3,.webm,.ogg,.flac,.mp4"></label>
+                            <button id="vocal-remove" class="seek-note" type="button" hidden>移除人声</button>
+                        </div>
+                        <div>
+                            <label>伴奏 <input id="backing-file" type="file" accept="audio/*,.m4a,.wav,.mp3,.webm,.ogg,.flac,.mp4"></label>
+                            <button id="backing-remove" class="seek-note" type="button" hidden>移除伴奏</button>
+                        </div>
+                        <div>
+                            <label>参考旋律 <input id="guide-file" type="file" accept="audio/*,.m4a,.wav,.mp3,.webm,.ogg,.flac,.mp4"></label>
+                            <button id="guide-remove" class="seek-note" type="button" hidden>移除参考旋律</button>
+                        </div>
+                    </div>
+                    <p class="muted small">支持 M4A 等音频格式。清唱录音更容易测准，录音里的乐器也可能被识别为音高。跟伴奏录唱时建议戴耳机。参考旋律可用同调、同速的清唱或单音乐器录音。文件在浏览器内处理。</p>
+                    <details id="alignment">
+                        <summary>对齐录音、参考旋律与拍点</summary>
+                        <div class="fields">
+                            <label>人声偏移（秒）<input id="vocal-offset" type="number" min="-600" max="600" step="0.01" value="0"></label>
+                            <label>参考偏移（秒）<input id="guide-offset" type="number" min="-600" max="600" step="0.01" value="0"></label>
+                            <label>速度（BPM，可选）<input id="bpm" type="number" min="30" max="250" step="any"></label>
+                            <label>首拍（秒）<input id="first-beat" type="number" min="0" max="600" step="0.01" value="0"></label>
+                        </div>
+                        <p class="muted small">正偏移让对应音轨晚一些进入，负偏移让它提前。没导入参考旋律时，可手填 BPM 看起声离最近一拍有多远。</p>
+                    </details>
+                    <div class="controls">
+                        <button id="record" type="button" class="button">开始录音</button>
+                        <button id="demo" type="button" class="button button-quiet">加载练习示例</button>
+                        <a id="download" class="button button-quiet" download="练唱录音.wav" hidden>保存人声</a>
+                    </div>
+                    <p id="status" class="muted small" role="status">选择本地录音，或直接开始录唱。</p>
+                </section>
+                <section class="card" aria-labelledby="result-title">
+                    <h2 id="result-title">回听与分析</h2>
+                    <div class="controls">
+                        <button id="play" type="button" class="button" disabled>播放</button>
+                        <label>回听 <select id="mix"><option value="mix">人声与伴奏</option><option value="vocal">仅人声</option><option value="backing">仅伴奏</option><option value="guide">参考旋律</option></select></label>
+                        <input id="position" class="timeline-control" aria-label="播放位置（秒）" type="range" min="0" max="0" step="0.01" value="0" disabled>
+                        <output id="time" for="position">0:00 / 0:00</output>
+                    </div>
+                    <p class="legend small"><b>人声音高</b><span id="guide-legend" hidden>参考音符</span></p>
+                    <canvas id="chart" class="chart" role="img" aria-label="随播放位置移动的人声音高时间图，逐音结果见下表"></canvas>
+                    <p id="summary" class="small" aria-live="polite">导入人声或完成录音后，查看逐音结果。</p>
+                    <div id="note-results" class="table-scroll" tabindex="0" hidden>
+                        <table>
+                            <thead><tr><th scope="col">位置</th><th scope="col">检测音</th><th scope="col">目标音</th><th scope="col">音高偏差</th><th scope="col">起声偏差</th></tr></thead>
+                            <tbody id="notes"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        </section>
+    </main>
+</body>
+</html>
